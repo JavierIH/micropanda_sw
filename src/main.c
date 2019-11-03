@@ -8,7 +8,17 @@
 #include "motor.h"
 #include "infrared.h"
 
+#define DETECTION       1700
+#define LINE            1700
+#define MAX_ROT_SPEED   50
+#define MAX_FWD_SPEED   50
+
 char text_buffer[200];
+
+uint32_t ir_bbl, ir_bbr, ir_bfl, ir_bfr;
+uint32_t ir_tsl, ir_tsr, ir_tfl, ir_tfr;
+uint32_t ir_tsl_off, ir_tsr_off, ir_tfl_off, ir_tfr_off;
+
 
 static void MX_ADC1_Init(void);
 void setup(void);
@@ -17,85 +27,76 @@ void delay(uint16_t time);
 
 int main(void) {
     setup();
-
-    //set_sense(MOTOR_R, FREE);
-    //set_sense(MOTOR_L, FREE);
     set_led(LED_GREEN, LED_ON);
-
-
-    //while (!get_button(BUTTON_START));
-    //set_led(LED_GREEN, LED_OFF);
-    //delay(1000);
-
-    set_sense(MOTOR_R, BACKWARD);
-    set_sense(MOTOR_L, BACKWARD);
-
-    //set_led(LED_GREEN, LED_ON);
-    set_led(LED_IR_TFL, LED_ON);
-    set_led(LED_IR_TFR, LED_ON);
-    set_led(LED_IR_TSL, LED_ON);
-    set_led(LED_IR_TSR, LED_ON);
-
-
     while(!get_button(BUTTON_START));
     set_led(LED_GREEN, LED_OFF);
-    set_pwm(PWM_2, 999);
-    set_pwm(PWM_1, 999);
-    while(1){
-        set_sense(MOTOR_R, BACKWARD);
-        set_sense(MOTOR_L, FORWARD);
-        delay(150);
-        set_sense(MOTOR_R, FREE);
-        set_sense(MOTOR_L, FREE);
-        delay(500);
-        set_sense(MOTOR_R, FORWARD);
-        set_sense(MOTOR_L, BACKWARD);
-        delay(150);
-        set_sense(MOTOR_R, FREE);
-        set_sense(MOTOR_L, FREE);
-        delay(500);
+    delay(5000);
+    uint8_t last_side; // 0 if enemy was at left, 1 if enemy was at right
 
-    }
-    /*while (1){
-        uint32_t value_ref = 0;
-        uint32_t value = 0;
-        set_led(LED_IR_TSR, LED_ON);
-        value = get_ir(SENSOR_IR_TSR);
-        delay(5);
+    //motor_set_sense(MOTOR_L, BACKWARD);
+    //motor_set_sense(MOTOR_R, BACKWARD);
 
-        set_led(LED_IR_TSR, LED_OFF);
-        value -= get_ir(SENSOR_IR_TSR);
-        delay(5);
+    while (1){
+        if(ir_tfl > DETECTION && ir_tfr > DETECTION){ //enemy
+            //sprintf(text_buffer,"ADELANTE\n\r", ir_tfr); send_uart(text_buffer);
+            motor_set_speed(MOTOR_L, 1000);
+            motor_set_speed(MOTOR_R, 1000);
 
-        //value = get_ir(SENSOR_IR_TSR) - value;
+        }
+        else if(ir_tfl > DETECTION){ //enemy
+            //corregir despacio a izquierda
+            //sprintf(text_buffer,"IZQUIERDA  SUAVE\n\r", ir_tfr); send_uart(text_buffer);
+            motor_set_speed(MOTOR_R, 300);
+            motor_set_speed(MOTOR_L, -300);
+            last_side = 0;
+        }
+        else if(ir_tfr > DETECTION){ //enemy
+            //corregir despacio a derecha
+            //sprintf(text_buffer,"DERECHA SUAVE\n\r", ir_tfr); send_uart(text_buffer);
+            motor_set_speed(MOTOR_R, -300);
+            motor_set_speed(MOTOR_L, 300);
+            last_side = 1;
+        }
+        //else if(ir_bfl > LINE && ir_bfr > LINE){ //white line
+            //atras
+        //}
+        //else if(ir_bbl > LINE && ir_bbr > LINE){
+            //adelante
+        //}
+        else if(ir_tsl > DETECTION){
+            //girar rapido a izquierda
+            //sprintf(text_buffer,"IZQUIERDA RAPIDO\n\r", ir_tfr); send_uart(text_buffer);
+            last_side = 0;
 
+        }
+        else if(ir_tsr > DETECTION){
+            //girar rapido a derecha
+            //sprintf(text_buffer,"DERECHA RAPIDO\n\r", ir_tfr); send_uart(text_buffer);
+            last_side = 1;
 
-        if(value>1100){
-            set_led(LED_GREEN, LED_OFF);
         }
         else{
-            set_led(LED_GREEN, LED_ON);
+            //girar to loco
+            if(last_side){
+                //sprintf(text_buffer,"BUSCA DERECHA\n\r", ir_tfr); send_uart(text_buffer);
+            }else{
+                //sprintf(text_buffer,"BUSCA IZQUIERDA\n\r", ir_tfr); send_uart(text_buffer);
+            }
+                motor_set_sense(MOTOR_L, FREE);
+                motor_set_sense(MOTOR_R, FREE);
         }
-        //set_led(LED_GREEN, LED_OFF);
-        //set_led(LED_IR_TFR, LED_OFF);
-        //set_led(LED_IR_TFL, LED_OFF);
-        //set_led(LED_IR_TSR, LED_OFF);
-        //set_led(LED_IR_TSL, LED_OFF);
-        //delay(1000);
-        //set_led(LED_GREEN, LED_ON);
-        //set_led(LED_IR_TFR, LED_ON);
-        //set_led(LED_IR_TFL, LED_ON);
-        //set_led(LED_IR_TSR, LED_ON);
-        //set_led(LED_IR_TSL, LED_ON);
 
-        sprintf(text_buffer,"IR: %d\t\n\r", value-value_ref); send_uart(text_buffer);
+        //sprintf(text_buffer,"IR TFL: %lu\t\n\r", ir_tfl); send_uart(text_buffer);
+        //sprintf(text_buffer,"IR TFR: %lu\t\n\r", ir_tfr); send_uart(text_buffer);
+        //sprintf(text_buffer,"IR TSL: %lu\t\n\r", ir_tsl); send_uart(text_buffer);
+        //sprintf(text_buffer,"IR TSR: %lu\t\n\n\r", ir_tsr); send_uart(text_buffer);
+        //delay(200);
+    }
 
-        delay(100);
-    }*/
 }
 
 void delay(uint16_t time){
-    HAL_Delay(time*20);
+    HAL_Delay(time*10);
 }
 
 void setup(void){
@@ -110,16 +111,56 @@ void setup(void){
     IR_Init();
 }
 
-void SysTick_Handler(void){ // function executed each 10us
+void SysTick_Handler(void){ // function executed each 100us
     static uint16_t task_tick = 0;
 
-    switch (task_tick++) { // each case is executed each 10us
+    switch (task_tick++) { // 100us between tasks
         case 0:
-            //update_pid();
+            ir_tsl_off = get_ir(SENSOR_IR_TSL);
+            ir_tsr_off = get_ir(SENSOR_IR_TSR);
+            ir_tfl_off = get_ir(SENSOR_IR_TFL);
+            ir_tfr_off = get_ir(SENSOR_IR_TFR);
+            set_led(LED_IR_TFR, LED_ON);
+            set_led(LED_IR_TFL, LED_ON);
+            set_led(LED_IR_TSR, LED_ON);
+            set_led(LED_IR_TSL, LED_ON);
+            break;
+
+        case 1:
+            ir_bbl = get_ir(SENSOR_IR_BBL);
+            ir_bbr = get_ir(SENSOR_IR_BBR);
+            ir_bfl = get_ir(SENSOR_IR_BFR);
+            ir_bfr = get_ir(SENSOR_IR_BFR);
+            break;
+
+        case 10:
+            ir_tsl = -get_ir(SENSOR_IR_TSL) + ir_tsl_off;
+            ir_tsr = -get_ir(SENSOR_IR_TSR) + ir_tsr_off;
+            ir_tfl = -get_ir(SENSOR_IR_TFL) + ir_tfl_off;
+            ir_tfr = -get_ir(SENSOR_IR_TFR) + ir_tfr_off;
+            set_led(LED_IR_TFR, LED_OFF);
+            set_led(LED_IR_TFL, LED_OFF);
+            set_led(LED_IR_TSR, LED_OFF);
+            set_led(LED_IR_TSL, LED_OFF);
+            break;
+
+        case 19:
             task_tick=0;
             break;
-        case 1:
+        /*case 3:
             break;
+        case 4:
+            break;
+        case 5:
+            break;
+        case 6:
+            break;
+        case 7:
+            break;
+        case 8:
+            break;
+        case 9:
+            break;*/
     }
     HAL_IncTick();
     HAL_SYSTICK_IRQHandler();

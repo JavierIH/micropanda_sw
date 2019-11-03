@@ -39,7 +39,7 @@ void SystemClock_Config(void){
     SystemCoreClockUpdate();
 
     // Configure the Systick interrupt time
-    HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/20000); //tick 50us
+    HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/10000); //tick 0.1ms
     // Configure the Systick
     HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
     // SysTick_IRQn interrupt configuration
